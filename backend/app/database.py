@@ -8,7 +8,7 @@ def _resolve_db_path() -> str:
     """
     Resolve the database path based on the runtime environment:
     - Vercel: copy seeded DB to /tmp (writable) on first cold start
-    - Render/Railway: use DATABASE_PATH env var
+    - Render/Railway: use DATABASE_PATH env var, preferably on a mounted volume
     - Local dev: use backend/ctf_quiz.db
     """
     # On Vercel / AWS Lambda / Serverless, only /tmp is writable

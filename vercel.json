@@ -1,11 +1,6 @@
 {
-  "buildCommand": "npm install && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "backend/**/*"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -16,7 +11,7 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/((?!assets/|favicon.ico|.*\\..*).*)",
+      "source": "/((?!assets/|favicon.svg|icons.svg|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
