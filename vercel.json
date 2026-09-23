@@ -1,9 +1,9 @@
 {
-  "framework": "vite",
+  "buildCommand": "npm install && npm run build",
   "outputDirectory": "dist",
   "functions": {
     "api/index.py": {
-      "includeFiles": "backend/**"
+      "includeFiles": "backend/**/*"
     }
   },
   "rewrites": [
