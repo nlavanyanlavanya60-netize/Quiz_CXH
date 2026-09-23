@@ -36,18 +36,23 @@ export default function App() {
   useEffect(() => {
     const checkAuth = async () => {
       // 1. If navigating to admin routes
-      if (currentRoute === '/admin' || currentRoute === '/admin/login') {
+      if (currentRoute === '/admin/login') {
+        // Always require credentials on login screen - never auto-login
+        setAdminSession(null);
+        return;
+      }
+      if (currentRoute === '/admin') {
         try {
           const data = await adminApi.getSession();
-          setAdminSession(data);
-          if (currentRoute === '/admin/login' && data.authenticated) {
-            navigate('/admin');
+          if (data && data.authenticated) {
+            setAdminSession(data);
+          } else {
+            setAdminSession(null);
+            navigate('/admin/login');
           }
         } catch {
           setAdminSession(null);
-          if (currentRoute === '/admin') {
-            navigate('/admin/login');
-          }
+          navigate('/admin/login');
         }
         return;
       }

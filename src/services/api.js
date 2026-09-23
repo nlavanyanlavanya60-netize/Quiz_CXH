@@ -1,13 +1,6 @@
-// Clean API_BASE resolution
-const defaultBackend = 'https://quiz-cxh-backend.vercel.app';
-let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
-if (!rawBase && !import.meta.env.DEV) {
-  rawBase = defaultBackend;
-}
-if (rawBase.endsWith('/')) {
-  rawBase = rawBase.slice(0, -1);
-}
-const API_BASE = rawBase ? `${rawBase}/api` : '/api';
+// Prefer same-origin '/api' to eliminate mobile CORS & 3rd-party cookie blocking
+const PRIMARY_API_BASE = '/api';
+const DIRECT_BACKEND = 'https://quiz-cxh-backend.vercel.app/api';
 
 export const tokenStorage = {
   get: () => sessionStorage.getItem('ctf_contestant_token'),
@@ -46,24 +39,19 @@ async function apiRequest(endpoint, options = {}) {
 
   let response;
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      response = await fetch(`${API_BASE}${endpoint}`, config);
-      if (response) break;
-    } catch (netErr) {
-      lastErr = netErr;
-      if (API_BASE !== '/api') {
-        try {
-          response = await fetch(`/api${endpoint}`, config);
-          if (response) break;
-        } catch (innerErr) {
-          lastErr = innerErr;
-        }
-      }
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+  const baseUrls = [PRIMARY_API_BASE, DIRECT_BACKEND];
+
+  for (const base of baseUrls) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(`${base}${endpoint}`, config);
+        if (response) break;
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
       }
     }
+    if (response) break;
   }
 
   if (!response) {
@@ -146,7 +134,7 @@ export const api = {
 };
 
 // ── Admin API Services ─────────────────────────────────────────────────────
-const ADMIN_API_BASE = rawBase ? `${rawBase}/api/admin` : '/api/admin';
+const ADMIN_BASES = ['/api/admin', 'https://quiz-cxh-backend.vercel.app/api/admin'];
 
 export const adminTokenStorage = {
   get: () => sessionStorage.getItem('ctf_admin_token'),
@@ -173,24 +161,17 @@ async function adminRequest(endpoint, options = {}) {
 
   let response;
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      response = await fetch(`${ADMIN_API_BASE}${endpoint}`, config);
-      if (response) break;
-    } catch (netErr) {
-      lastErr = netErr;
-      if (ADMIN_API_BASE !== '/api/admin') {
-        try {
-          response = await fetch(`/api/admin${endpoint}`, config);
-          if (response) break;
-        } catch (innerErr) {
-          lastErr = innerErr;
-        }
-      }
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+  for (const base of ADMIN_BASES) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(`${base}${endpoint}`, config);
+        if (response) break;
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
       }
     }
+    if (response) break;
   }
 
   if (!response) {
