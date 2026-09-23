@@ -14,7 +14,7 @@ node_modules/
 contestant-frontend/node_modules/
 admin-frontend/node_modules/
 
-# Env
+# Env — ignore local secrets only, keep .env.production for Vercel
 .env
 .env.local
 .env.*.local

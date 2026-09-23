@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ctf-quiz-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/backend/ctf_quiz.db
+      - key: PYTHON_VERSION
+        value: 3.12.0

@@ -24,13 +24,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Explicit CORS Origins for Contestant (5173) and Administrator (5174)
+# Explicit CORS Origins for Contestant (5173) and Administrator (5174) — local + Vercel production
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
-    "http://127.0.0.1:5174"
+    "http://127.0.0.1:5174",
+    # Vercel production deployments
+    "https://quiz-cxh.vercel.app",
+    "https://quiz-cxh-admin.vercel.app",
 ]
+
+# Also allow any *.vercel.app preview deployments via regex
+import re as _re
 
 app.add_middleware(
     CORSMiddleware,

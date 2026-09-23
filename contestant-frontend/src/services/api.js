@@ -1,4 +1,8 @@
-const API_BASE = '/api';
+// In production (Vercel), VITE_API_BASE_URL points to the Render backend.
+// In local dev, the Vite proxy forwards /api → localhost:8000
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : '/api';
 
 export const tokenStorage = {
   get: () => sessionStorage.getItem('ctf_contestant_token'),

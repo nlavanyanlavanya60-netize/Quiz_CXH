@@ -3,8 +3,9 @@ import sqlite3
 from contextlib import contextmanager
 from typing import Generator
 
-# Authoritative database path
-DB_PATH = os.path.abspath(r"C:\CTF\backend\ctf_quiz.db")
+# Authoritative database path — cross-platform, supports DATABASE_PATH env var for cloud deployments
+_default_db = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ctf_quiz.db")
+DB_PATH = os.environ.get("DATABASE_PATH", _default_db)
 
 def get_connection() -> sqlite3.Connection:
     """Create and configure a SQLite connection with WAL mode and foreign keys enabled."""
