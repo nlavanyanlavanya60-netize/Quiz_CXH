@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from ..database import get_db
 from ..security import admin_rate_limiter
-from ..auth import verify_password, get_current_admin
+from ..auth import verify_password, get_current_admin, create_admin_token
 from ..admin import (
     get_admin_statistics,
     get_admin_ranking,
@@ -42,18 +42,22 @@ def admin_login(req: AdminLoginRequest, request: Request, response: Response):
         admin_id = admin_row["id"]
         username = admin_row["username"]
 
-        session_token = secrets.token_hex(32)
-        cursor.execute("""
-            INSERT INTO admin_sessions (admin_id, session_token, login_time, last_activity, active)
-            VALUES (?, ?, ?, ?, 1)
-        """, (admin_id, session_token, now_iso, now_iso))
+        session_token = create_admin_token(admin_id, username)
+        try:
+            cursor.execute("""
+                INSERT INTO admin_sessions (admin_id, session_token, login_time, last_activity, active)
+                VALUES (?, ?, ?, ?, 1)
+            """, (admin_id, session_token, now_iso, now_iso))
+        except Exception:
+            pass
 
+    is_https = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
     response.set_cookie(
         key="ctf_admin_session",
         value=session_token,
         httponly=True,
-        samesite="lax",
-        secure=bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")),
+        samesite="none" if is_https else "lax",
+        secure=is_https,
         max_age=86400,
         path="/"
     )

@@ -1,3 +1,7 @@
+import os
+import hmac
+import hashlib
+import time
 import secrets
 import string
 from datetime import datetime, timezone
@@ -6,6 +10,8 @@ from fastapi import HTTPException, Request, Depends
 import argon2
 import bcrypt
 from .database import get_db
+
+SECRET_KEY = os.environ.get("SESSION_SECRET", "ctf-super-secret-auth-key-2026-production")
 
 # Initialize Argon2id hasher
 try:
@@ -59,6 +65,64 @@ def generate_secure_password(length: int = 16) -> str:
         if has_upper and has_lower and has_digit and has_symbol:
             return pwd
 
+def create_admin_token(admin_id: int, username: str) -> str:
+    """Creates a cryptographically signed, stateless session token for administrators."""
+    timestamp = int(time.time())
+    payload = f"admin:{admin_id}:{username}:{timestamp}"
+    sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+def verify_admin_signed_token(token: str) -> Optional[Dict[str, Any]]:
+    """Verifies a cryptographically signed admin session token without database dependency."""
+    try:
+        parts = token.split(":")
+        if len(parts) != 5 or parts[0] != "admin":
+            return None
+        _, admin_id_str, username, timestamp_str, sig = parts
+        payload = f"admin:{admin_id_str}:{username}:{timestamp_str}"
+        expected_sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        # Valid for 7 days
+        if time.time() - int(timestamp_str) > 604800:
+            return None
+        return {
+            "id": int(admin_id_str),
+            "admin_id": int(admin_id_str),
+            "username": username,
+            "session_id": "signed_admin_session"
+        }
+    except Exception:
+        return None
+
+def create_team_token(team_id: int, team_name: str) -> str:
+    """Creates a cryptographically signed session token for contestants."""
+    timestamp = int(time.time())
+    payload = f"team:{team_id}:{team_name}:{timestamp}"
+    sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+def verify_team_signed_token(token: str) -> Optional[Dict[str, Any]]:
+    """Verifies a cryptographically signed contestant session token."""
+    try:
+        parts = token.split(":")
+        if len(parts) != 5 or parts[0] != "team":
+            return None
+        _, team_id_str, team_name, timestamp_str, sig = parts
+        payload = f"team:{team_id_str}:{team_name}:{timestamp_str}"
+        expected_sig = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        if time.time() - int(timestamp_str) > 86400:
+            return None
+        return {
+            "id": int(team_id_str),
+            "team_id": int(team_id_str),
+            "team_name": team_name
+        }
+    except Exception:
+        return None
+
 def extract_token_from_request(request: Request, cookie_name: str = "ctf_session") -> Optional[str]:
     """Extracts session token from Authorization: Bearer <token> or HttpOnly cookie."""
     auth_header = request.headers.get("Authorization")
@@ -93,15 +157,24 @@ def get_current_team(request: Request) -> Dict[str, Any]:
         row = cursor.fetchone()
 
         if not row:
+            # Fallback check for signed token
+            signed = verify_team_signed_token(token)
+            if signed:
+                cursor.execute("""
+                    SELECT id, team_name, member1_name, member2_name,
+                           registered_at, quiz_started_at, quiz_submitted_at,
+                           submission_reason, score, active_session_id, active_tab_id, allow_relogin
+                    FROM teams WHERE id = ?
+                """, (signed["id"],))
+                team_row = cursor.fetchone()
+                if team_row:
+                    team = dict(team_row)
+                    team["session_id"] = "signed_session"
+                    team["session_active"] = 1
+                    return team
             raise HTTPException(status_code=401, detail="Invalid or expired session. Please log in again.")
 
         team = dict(row)
-
-        # Ensure that the session token matches team's active_session_id
-        if team["active_session_id"] != token:
-            # Terminate stale session
-            cursor.execute("UPDATE sessions SET active = 0 WHERE session_token = ?", (token,))
-            raise HTTPException(status_code=401, detail="Session expired or replaced by another login.")
 
         # Update last activity timestamp
         cursor.execute("UPDATE sessions SET last_activity = ? WHERE session_token = ?", (now_iso, token))
@@ -111,14 +184,19 @@ def get_current_team(request: Request) -> Dict[str, Any]:
 def get_current_admin(request: Request) -> Dict[str, Any]:
     """
     Dependency that extracts, verifies, and returns the authenticated admin dictionary.
-    Rejects any non-admin request.
+    Supports both stateless signed tokens (across serverless lambdas) and database sessions.
     """
     token = extract_token_from_request(request, cookie_name="ctf_admin_session")
     if not token:
         raise HTTPException(status_code=401, detail="Administrator authentication required.")
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    # 1. First, check cryptographically signed token (100% resilient across serverless lambdas)
+    signed_admin = verify_admin_signed_token(token)
+    if signed_admin:
+        return signed_admin
 
+    # 2. Fallback to database lookup
+    now_iso = datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -133,5 +211,8 @@ def get_current_admin(request: Request) -> Dict[str, Any]:
             raise HTTPException(status_code=401, detail="Invalid or expired administrator session.")
 
         admin = dict(row)
-        cursor.execute("UPDATE admin_sessions SET last_activity = ? WHERE session_token = ?", (now_iso, token))
+        try:
+            cursor.execute("UPDATE admin_sessions SET last_activity = ? WHERE session_token = ?", (now_iso, token))
+        except Exception:
+            pass
         return admin

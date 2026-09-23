@@ -54,7 +54,11 @@ export default function AdminDashboard({ onLogout }) {
     } catch (err) {
       console.error('Error fetching admin telemetry:', err);
       if (err.status === 401) {
-        onLogout();
+        try {
+          await adminApi.getSession();
+        } catch {
+          onLogout();
+        }
       }
     } finally {
       setLoading(false);
