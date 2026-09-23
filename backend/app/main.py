@@ -47,8 +47,9 @@ class FlexibleCORSMiddleware(BaseHTTPMiddleware):
         origin = request.headers.get("origin", "")
         is_allowed = (
             origin in ALLOWED_ORIGINS
-            or re.match(r"^https://[a-z0-9\-]+-[a-z0-9]+-[a-z0-9]+\.vercel\.app$", origin)
-            or re.match(r"^https://quiz-cxh[a-z0-9\-]*\.vercel\.app$", origin)
+            or origin.endswith(".vercel.app")
+            or re.match(r"^https://[a-zA-Z0-9\-_.]+\.vercel\.app$", origin)
+            or not origin
         )
 
         req_headers = request.headers.get("access-control-request-headers", "Authorization, Content-Type, X-Tab-ID")
