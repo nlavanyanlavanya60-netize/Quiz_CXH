@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import datetime, timezone
 from typing import Dict, Any
@@ -156,7 +157,7 @@ def login_team(req: LoginRequest, request: Request, response: Response):
         value=session_token,
         httponly=True,
         samesite="lax",
-        secure=False,  # Local development on HTTP
+        secure=bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")),
         max_age=86400,
         path="/"
     )

@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import datetime, timezone
 from typing import Dict, Any, List
@@ -52,7 +53,7 @@ def admin_login(req: AdminLoginRequest, request: Request, response: Response):
         value=session_token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV")),
         max_age=86400,
         path="/"
     )

@@ -1,11 +1,38 @@
 import os
+import shutil
 import sqlite3
 from contextlib import contextmanager
 from typing import Generator
 
-# Authoritative database path — cross-platform, supports DATABASE_PATH env var for cloud deployments
-_default_db = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ctf_quiz.db")
-DB_PATH = os.environ.get("DATABASE_PATH", _default_db)
+def _resolve_db_path() -> str:
+    """
+    Resolve the database path based on the runtime environment:
+    - Vercel: copy seeded DB to /tmp (writable) on first cold start
+    - Render/Railway: use DATABASE_PATH env var
+    - Local dev: use backend/ctf_quiz.db
+    """
+    # On Vercel, only /tmp is writable
+    if os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"):
+        tmp_path = "/tmp/ctf_quiz.db"
+        if not os.path.exists(tmp_path):
+            # Seed from committed DB (has 50 questions + admin pre-loaded)
+            src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ctf_quiz.db")
+            src = os.path.normpath(src)
+            if os.path.exists(src):
+                shutil.copy2(src, tmp_path)
+                print(f"[CTF] Seeded database to {tmp_path}")
+        return tmp_path
+
+    # Render / Railway / custom cloud
+    if os.environ.get("DATABASE_PATH"):
+        return os.environ["DATABASE_PATH"]
+
+    # Local development
+    return os.path.normpath(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ctf_quiz.db")
+    )
+
+DB_PATH = _resolve_db_path()
 
 def get_connection() -> sqlite3.Connection:
     """Create and configure a SQLite connection with WAL mode and foreign keys enabled."""
