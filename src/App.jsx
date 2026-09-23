@@ -197,25 +197,6 @@ export default function App() {
         }}
       >
         <span>CYBERSECURITY CAPTURE THE FLAG // DEFENSE PROTOCOL 2026 • STRICT SERVER AUTHORITATIVE SYSTEM</span>
-        {/* Subtle footer shortcut to Admin */}
-        <button
-          onClick={() => navigate(adminSession?.authenticated ? '/admin' : '/admin/login')}
-          title="Command Center"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'rgba(255, 255, 255, 0.1)',
-            cursor: 'pointer',
-            padding: '2px 4px',
-            fontSize: '0.7rem',
-            fontFamily: 'var(--font-mono)',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.1)')}
-        >
-          [ADM]
-        </button>
       </footer>
     </div>
   );

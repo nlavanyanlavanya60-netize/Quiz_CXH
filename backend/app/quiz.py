@@ -8,13 +8,13 @@ from .database import get_db
 
 QUIZ_DURATION_SECONDS = 1800  # 30 minutes
 
-def get_or_create_team_question_order(team_id: int) -> List[int]:
+def get_or_create_team_question_order(team_id: int, conn: Any = None) -> List[int]:
     """
     Returns the persistent server-authoritative randomized question order for the team.
     If not yet generated, creates a random permutation of [1..50] and stores it in the database.
     """
-    with get_db() as conn:
-        cursor = conn.cursor()
+    def _execute(c):
+        cursor = c.cursor()
         cursor.execute("SELECT order_json FROM team_question_order WHERE team_id = ?", (team_id,))
         row = cursor.fetchone()
         if row:
@@ -34,6 +34,11 @@ def get_or_create_team_question_order(team_id: int) -> List[int]:
         """, (team_id, order_json))
 
         return order
+
+    if conn is not None:
+        return _execute(conn)
+    with get_db() as c:
+        return _execute(c)
 
 def validate_tab_session(team_id: int, tab_id: Optional[str]) -> str:
     """
@@ -145,8 +150,7 @@ def record_violation_for_team(team_id: int, event_id: str, event_type: str = "vi
         """, (now_iso, team_id, f"Violation #{new_count}, event_type={event_type}, event_id={event_id}"))
 
         if new_count >= 4:
-            conn.commit()
-            submit_quiz_for_team(team_id, reason="violation_limit")
+            submit_quiz_for_team(team_id, reason="violation_limit", conn=conn)
             return {
                 "status": "terminated",
                 "violation_count": new_count,
@@ -231,7 +235,7 @@ def get_quiz_state_for_team(team: Dict[str, Any]) -> Dict[str, Any]:
 
         # Check for timeout auto-submit
         if remaining_seconds <= 0.0:
-            submit_quiz_for_team(team_id, reason="timeout")
+            submit_quiz_for_team(team_id, reason="timeout", conn=conn)
             return {
                 "quiz_started": True,
                 "quiz_submitted": True,
@@ -252,7 +256,7 @@ def get_quiz_state_for_team(team: Dict[str, Any]) -> Dict[str, Any]:
         if order_row:
             order = json.loads(order_row["order_json"])
         else:
-            order = get_or_create_team_question_order(team_id)
+            order = get_or_create_team_question_order(team_id, conn=conn)
 
         # Fetch team answers so far
         cursor.execute("SELECT question_number, selected_answer FROM answers WHERE team_id = ?", (team_id,))
@@ -390,7 +394,7 @@ def record_answer_for_team(team_id: int, question_number: int, selected_answer: 
             "answered_at": now_iso
         }
 
-def submit_quiz_for_team(team_id: int, reason: str = "manual") -> Dict[str, Any]:
+def submit_quiz_for_team(team_id: int, reason: str = "manual", conn: Any = None) -> Dict[str, Any]:
     """
     Calculates final score on server, records duration and submission reason, locks the quiz attempt.
     CRITICAL: Returns server-side dict for internal and admin storage.
@@ -403,8 +407,8 @@ def submit_quiz_for_team(team_id: int, reason: str = "manual") -> Dict[str, Any]
     if reason not in valid_reasons:
         reason = "manual"
 
-    with get_db() as conn:
-        cursor = conn.cursor()
+    def _do_submit(c):
+        cursor = c.cursor()
         cursor.execute("""
             SELECT quiz_started_at, quiz_submitted_at, score
             FROM teams WHERE id = ?
@@ -490,3 +494,8 @@ def submit_quiz_for_team(team_id: int, reason: str = "manual") -> Dict[str, Any]
             "unanswered_count": unanswered_count,
             "duration_seconds": duration_seconds
         }
+
+    if conn is not None:
+        return _do_submit(conn)
+    with get_db() as c:
+        return _do_submit(c)

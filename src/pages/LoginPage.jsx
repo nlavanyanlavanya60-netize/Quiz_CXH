@@ -47,37 +47,6 @@ export default function LoginPage({ onLoginSuccess, onNavigate }) {
           position: 'relative',
         }}
       >
-        {/* Discreet Admin Portal Entry Icon */}
-        <button
-          type="button"
-          onClick={() => onNavigate('/admin/login')}
-          title="Command Center Access"
-          style={{
-            position: 'absolute',
-            top: '0.85rem',
-            right: '0.85rem',
-            background: 'transparent',
-            border: 'none',
-            color: 'rgba(255, 255, 255, 0.12)',
-            cursor: 'pointer',
-            padding: '6px',
-            borderRadius: 'var(--radius-sm)',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--accent-cyan)';
-            e.currentTarget.style.background = 'rgba(0, 210, 255, 0.08)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.12)';
-            e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          <Shield size={16} />
-        </button>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -222,33 +191,6 @@ export default function LoginPage({ onLoginSuccess, onNavigate }) {
             }}
           >
             Register Here
-          </button>
-        </div>
-
-        {/* Discreet Command Center Entry */}
-        <div style={{ marginTop: '0.85rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => onNavigate('/admin/login')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'rgba(255, 255, 255, 0.2)',
-              fontSize: '0.72rem',
-              fontFamily: 'var(--font-mono)',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              transition: 'color 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.2)'}
-          >
-            <Shield size={11} />
-            <span>Admin Portal</span>
           </button>
         </div>
       </div>
