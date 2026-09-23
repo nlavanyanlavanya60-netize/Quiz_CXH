@@ -1,3 +1,4 @@
+import os
 import json
 import random
 from datetime import datetime, timezone
@@ -20,8 +21,10 @@ def get_or_create_team_question_order(team_id: int) -> List[int]:
             return json.loads(row["order_json"])
 
         # Create randomized permutation of questions 1..50
+        # Seeded deterministically per team so all serverless instances generate identical question sequence
+        secret = os.environ.get("SESSION_SECRET", "ctf-super-secret-auth-key-2026-production")
         order = list(range(1, 51))
-        random.SystemRandom().shuffle(order)
+        random.Random(f"{secret}:team:{team_id}").shuffle(order)
         order_json = json.dumps(order)
 
         cursor.execute("""

@@ -1,10 +1,15 @@
 import sys
 import os
 
-# Ensure backend/ is in the Python path so `from app.main import app` works
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add root directory and backend directory to sys.path
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
+sys.path.insert(0, os.path.join(ROOT_DIR, "backend"))
 
-from app.main import app as _fastapi_app
+try:
+    from backend.app.main import app as _fastapi_app
+except ImportError:
+    from app.main import app as _fastapi_app
 
 class VercelPathMiddleware:
     """

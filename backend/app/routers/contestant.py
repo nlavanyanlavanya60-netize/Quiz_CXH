@@ -10,7 +10,10 @@ from ..security import (
     answer_rate_limiter, submission_rate_limiter,
     violation_rate_limiter
 )
-from ..auth import hash_password, verify_password, generate_secure_password, get_current_team
+from ..auth import (
+    hash_password, verify_password, generate_secure_password,
+    generate_deterministic_password, create_team_token, get_current_team
+)
 from ..quiz import (
     get_or_create_team_question_order,
     get_quiz_state_for_team,
@@ -63,8 +66,8 @@ def register_team(req: RegisterRequest, request: Request):
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Team name is already registered. Please choose another name.")
 
-        # 3. Generate secure random password and hash it
-        generated_password = generate_secure_password(length=16)
+        # 3. Generate deterministic yet cryptographically strong password and hash it
+        generated_password = generate_deterministic_password(req.team_name)
         pwd_hash = hash_password(generated_password)
 
         # 4. Insert team into database
@@ -110,7 +113,32 @@ def login_team(req: LoginRequest, request: Request, response: Response):
         """, (team_name_lower,))
         team_row = cursor.fetchone()
 
-        if not team_row or not verify_password(req.password, team_row["password_hash"]):
+        # Resiliency for serverless cold starts across separate instances
+        if not team_row:
+            expected_pwd = generate_deterministic_password(team_name_lower)
+            if req.password == expected_pwd:
+                pwd_hash = hash_password(req.password)
+                cursor.execute("""
+                    INSERT INTO teams (
+                        team_name, team_name_lower, password_hash,
+                        member1_name, registered_at, login_used, allow_relogin
+                    ) VALUES (?, ?, ?, ?, ?, 0, 0);
+                """, (req.team_name, team_name_lower, pwd_hash, "Contestant", now_iso))
+                new_id = cursor.lastrowid
+                get_or_create_team_question_order(new_id)
+                cursor.execute("""
+                    SELECT id, team_name, password_hash, active_session_id,
+                           quiz_submitted_at, allow_relogin
+                    FROM teams
+                    WHERE id = ?
+                """, (new_id,))
+                team_row = cursor.fetchone()
+
+        is_valid_pwd = False
+        if team_row:
+            is_valid_pwd = verify_password(req.password, team_row["password_hash"]) or (req.password == generate_deterministic_password(team_name_lower))
+
+        if not team_row or not is_valid_pwd:
             raise HTTPException(status_code=401, detail="Invalid team name or password.")
 
         team_id = team_row["id"]
@@ -133,8 +161,8 @@ def login_team(req: LoginRequest, request: Request, response: Response):
                     detail="This team is already logged in."
                 )
 
-        # Generate unique session token
-        session_token = secrets.token_hex(32)
+        # Generate cryptographically signed session token (resilient across serverless lambdas)
+        session_token = create_team_token(team_id, team_name)
 
         # Update team's active session and login count atomically
         cursor.execute("""

@@ -20,12 +20,27 @@ def _resolve_db_path() -> str:
     if is_serverless:
         tmp_path = "/tmp/ctf_quiz.db"
         if not os.path.exists(tmp_path):
-            # Seed from committed DB (has 50 questions + admin pre-loaded)
-            src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ctf_quiz.db")
-            src = os.path.normpath(src)
-            if os.path.exists(src):
-                shutil.copy2(src, tmp_path)
-                print(f"[CTF] Seeded database to {tmp_path}")
+            candidates = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ctf_quiz.db"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "api", "ctf_quiz.db"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "ctf_quiz.db"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "backend", "ctf_quiz.db"),
+                os.path.join(os.getcwd(), "backend", "ctf_quiz.db"),
+                os.path.join(os.getcwd(), "api", "ctf_quiz.db"),
+                os.path.join(os.getcwd(), "ctf_quiz.db"),
+                "/var/task/backend/ctf_quiz.db",
+                "/var/task/api/ctf_quiz.db",
+                "/var/task/ctf_quiz.db",
+            ]
+            for c in candidates:
+                c = os.path.normpath(c)
+                if os.path.exists(c):
+                    try:
+                        shutil.copy2(c, tmp_path)
+                        print(f"[CTF] Seeded database from {c} to {tmp_path}")
+                        break
+                    except Exception as e:
+                        print(f"[CTF] Warning: Failed to copy {c}: {e}")
         return tmp_path
 
     # Render / Railway / custom cloud

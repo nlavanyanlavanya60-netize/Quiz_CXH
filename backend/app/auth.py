@@ -49,6 +49,38 @@ def verify_password(password: str, hashed: str) -> bool:
             return False
     return False
 
+def generate_deterministic_password(team_name: str, length: int = 16) -> str:
+    """
+    Generates a deterministic, cryptographically secure password for a team name using HMAC-SHA256.
+    Ensures team credentials remain consistent across all serverless containers and cold starts.
+    Includes uppercase, lowercase, numbers, and symbols.
+    """
+    clean_name = team_name.lower().strip()
+    key_bytes = SECRET_KEY.encode("utf-8")
+    data_bytes = f"ctf_team_pwd:{clean_name}".encode("utf-8")
+    digest = hmac.new(key_bytes, data_bytes, hashlib.sha256).digest()
+
+    alphabet_upper = string.ascii_uppercase
+    alphabet_lower = string.ascii_lowercase
+    alphabet_digits = string.digits
+    alphabet_symbols = "!?@_"
+
+    c_upper = alphabet_upper[digest[0] % len(alphabet_upper)]
+    c_lower = alphabet_lower[digest[1] % len(alphabet_lower)]
+    c_digit = alphabet_digits[digest[2] % len(alphabet_digits)]
+    c_sym = alphabet_symbols[digest[3] % len(alphabet_symbols)]
+
+    full_alphabet = string.ascii_letters + string.digits + "!?@_"
+    chars = [c_upper, c_lower, c_digit, c_sym]
+    for i in range(4, length):
+        chars.append(full_alphabet[digest[i % len(digest)] % len(full_alphabet)])
+
+    for i in range(len(chars) - 1, 0, -1):
+        j = digest[(i + 7) % len(digest)] % (i + 1)
+        chars[i], chars[j] = chars[j], chars[i]
+
+    return "".join(chars)
+
 def generate_secure_password(length: int = 16) -> str:
     """
     Generates a cryptographically secure random password.
@@ -64,6 +96,7 @@ def generate_secure_password(length: int = 16) -> str:
         has_symbol = any(c in "!?@_" for c in pwd)
         if has_upper and has_lower and has_digit and has_symbol:
             return pwd
+
 
 def create_admin_token(admin_id: int, username: str) -> str:
     """Creates a cryptographically signed, stateless session token for administrators."""
@@ -167,6 +200,28 @@ def get_current_team(request: Request) -> Dict[str, Any]:
                     FROM teams WHERE id = ?
                 """, (signed["id"],))
                 team_row = cursor.fetchone()
+                if not team_row:
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO teams (
+                            id, team_name, team_name_lower, password_hash,
+                            member1_name, registered_at, login_used, allow_relogin
+                        ) VALUES (?, ?, ?, ?, ?, ?, 1, 0);
+                    """, (
+                        signed["id"],
+                        signed["team_name"],
+                        signed["team_name"].lower(),
+                        hash_password(generate_deterministic_password(signed["team_name"])),
+                        "Contestant",
+                        now_iso
+                    ))
+                    cursor.execute("""
+                        SELECT id, team_name, member1_name, member2_name,
+                               registered_at, quiz_started_at, quiz_submitted_at,
+                               submission_reason, score, active_session_id, active_tab_id, allow_relogin
+                        FROM teams WHERE id = ?
+                    """, (signed["id"],))
+                    team_row = cursor.fetchone()
+
                 if team_row:
                     team = dict(team_row)
                     team["session_id"] = "signed_session"
