@@ -58,13 +58,20 @@ def get_connection():
     """Create and configure database connection (Turso libSQL or SQLite with WAL mode)."""
     turso_url = os.environ.get("TURSO_DATABASE_URL")
     if turso_url:
+        token = os.environ.get("TURSO_AUTH_TOKEN", "")
         try:
-            import libsql_experimental as libsql
-            conn = libsql.connect(turso_url, auth_token=os.environ.get("TURSO_AUTH_TOKEN", ""))
+            import libsql
+            conn = libsql.connect(turso_url, auth_token=token)
             conn.row_factory = sqlite3.Row
             return conn
-        except Exception as e:
-            print(f"[CTF Database] Warning: Turso connection failed, falling back to SQLite: {e}")
+        except Exception as e1:
+            try:
+                import libsql_experimental as libsql_exp
+                conn = libsql_exp.connect(turso_url, auth_token=token)
+                conn.row_factory = sqlite3.Row
+                return conn
+            except Exception as e2:
+                print(f"[CTF Database] Warning: Turso connection failed ({e1}; {e2}), falling back to SQLite")
 
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row

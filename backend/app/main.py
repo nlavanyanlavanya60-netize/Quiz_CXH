@@ -85,10 +85,25 @@ def health_check():
 @app.get("/debug")
 @app.get("/api/debug")
 def debug_info(request: Request):
-    """Debug endpoint to inspect incoming path and scope."""
+    """Debug endpoint to inspect incoming path, scope, and database connection status."""
+    from .database import get_db
+    turso_set = bool(os.environ.get("TURSO_DATABASE_URL"))
+    db_mode = "unknown"
+    team_count = -1
+    err = None
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM teams;")
+            team_count = cursor.fetchone()[0]
+            db_mode = "turso" if turso_set else "sqlite_local"
+    except Exception as e:
+        err = str(e)
     return {
         "url": str(request.url),
         "path": request.url.path,
-        "root_path": request.scope.get("root_path", ""),
-        "scope_path": request.scope.get("path", "")
+        "turso_configured": turso_set,
+        "db_mode": db_mode,
+        "teams_count": team_count,
+        "db_error": err
     }
