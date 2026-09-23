@@ -28,15 +28,27 @@ def get_admin_statistics() -> Dict[str, Any]:
         # 4. Unsubmitted teams
         unsubmitted_teams = total_registered - submitted_teams
 
-        # 5. Highest score and average score among submitted teams
+        # 5. Highest score and average score (including real-time scores for active attempts)
         cursor.execute("""
-            SELECT MAX(score), AVG(score)
-            FROM teams
-            WHERE quiz_submitted_at IS NOT NULL AND score IS NOT NULL;
+            SELECT
+                MAX(COALESCE(t.score, (
+                    SELECT COALESCE(SUM(q.marks), 0)
+                    FROM answers a
+                    JOIN quiz_questions q ON a.question_number = q.question_number
+                    WHERE a.team_id = t.id AND a.selected_answer = q.correct_answer
+                ))),
+                AVG(COALESCE(t.score, (
+                    SELECT COALESCE(SUM(q.marks), 0)
+                    FROM answers a
+                    JOIN quiz_questions q ON a.question_number = q.question_number
+                    WHERE a.team_id = t.id AND a.selected_answer = q.correct_answer
+                )))
+            FROM teams t
+            WHERE t.quiz_started_at IS NOT NULL OR t.quiz_submitted_at IS NOT NULL;
         """)
         row = cursor.fetchone()
-        highest_score = row[0] if row[0] is not None else 0
-        avg_score = round(float(row[1]), 1) if row[1] is not None else 0.0
+        highest_score = row[0] if (row and row[0] is not None) else 0
+        avg_score = round(float(row[1]), 1) if (row and row[1] is not None) else 0.0
 
         return {
             "total_registered_teams": total_registered,
@@ -48,20 +60,46 @@ def get_admin_statistics() -> Dict[str, Any]:
             "completed_attempts": submitted_teams
         }
 
-def get_admin_ranking(limit: int = 5) -> List[Dict[str, Any]]:
+def get_admin_ranking(limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Returns the top teams ranked by highest score.
-    Tiebreaker: Submission time (earlier submission ranks higher).
+    Returns teams ranked by score with live in-progress calculation.
+    Tiebreaker: Submitted teams rank higher, then duration, then ID.
     """
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, team_name, member1_name, member2_name, score,
-                   correct_count, wrong_count, unanswered_count,
-                   quiz_submitted_at, duration_seconds, submission_reason
-            FROM teams
-            WHERE quiz_submitted_at IS NOT NULL AND score IS NOT NULL
-            ORDER BY score DESC, duration_seconds ASC, quiz_submitted_at ASC
+            SELECT t.id, t.team_name, t.member1_name, t.member2_name,
+                   COALESCE(t.score, (
+                       SELECT COALESCE(SUM(q.marks), 0)
+                       FROM answers a
+                       JOIN quiz_questions q ON a.question_number = q.question_number
+                       WHERE a.team_id = t.id AND a.selected_answer = q.correct_answer
+                   )) AS score,
+                   COALESCE(t.correct_count, (
+                       SELECT COUNT(*)
+                       FROM answers a
+                       JOIN quiz_questions q ON a.question_number = q.question_number
+                       WHERE a.team_id = t.id AND a.selected_answer = q.correct_answer
+                   )) AS correct_count,
+                   COALESCE(t.wrong_count, (
+                       SELECT COUNT(*)
+                       FROM answers a
+                       JOIN quiz_questions q ON a.question_number = q.question_number
+                       WHERE a.team_id = t.id AND a.selected_answer != q.correct_answer
+                   )) AS wrong_count,
+                   COALESCE(t.unanswered_count, (
+                       50 - (SELECT COUNT(*) FROM answers a WHERE a.team_id = t.id)
+                   )) AS unanswered_count,
+                   t.quiz_started_at,
+                   t.quiz_submitted_at,
+                   COALESCE(t.duration_seconds, 0) AS duration_seconds,
+                   t.submission_reason
+            FROM teams t
+            ORDER BY
+                score DESC,
+                (CASE WHEN t.quiz_submitted_at IS NOT NULL THEN 0 ELSE 1 END) ASC,
+                duration_seconds ASC,
+                t.id ASC
             LIMIT ?;
         """, (limit,))
         rows = cursor.fetchall()
@@ -76,7 +114,7 @@ def get_admin_ranking(limit: int = 5) -> List[Dict[str, Any]]:
 
 def get_admin_teams_overview() -> List[Dict[str, Any]]:
     """
-    Returns complete team roster with session and submission statuses for the admin dashboard.
+    Returns complete team roster with live scores, answers count, and violation telemetry.
     """
     with get_db() as conn:
         cursor = conn.cursor()
@@ -85,6 +123,14 @@ def get_admin_teams_overview() -> List[Dict[str, Any]]:
                    t.registered_at, t.login_used, t.active_session_id,
                    t.quiz_started_at, t.quiz_submitted_at, t.submission_reason,
                    t.allow_relogin,
+                   COALESCE(t.violation_count, 0) AS violation_count,
+                   COALESCE(t.score, (
+                       SELECT COALESCE(SUM(q.marks), 0)
+                       FROM answers a
+                       JOIN quiz_questions q ON a.question_number = q.question_number
+                       WHERE a.team_id = t.id AND a.selected_answer = q.correct_answer
+                   )) AS score,
+                   (SELECT COUNT(*) FROM answers a WHERE a.team_id = t.id) AS answered_count,
                    CASE WHEN s.id IS NOT NULL AND s.active = 1 THEN 1 ELSE 0 END AS has_active_session,
                    s.login_time AS session_login_time,
                    s.last_activity AS session_last_activity

@@ -45,20 +45,29 @@ async function apiRequest(endpoint, options = {}) {
   };
 
   let response;
-  try {
-    response = await fetch(`${API_BASE}${endpoint}`, config);
-  } catch (netErr) {
-    // If an external backend is unreachable, automatically fall back to relative /api
-    if (API_BASE !== '/api') {
-      try {
-        console.warn(`External backend at ${API_BASE} failed, attempting same-origin fallback...`);
-        response = await fetch(`/api${endpoint}`, config);
-      } catch {
-        throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(`${API_BASE}${endpoint}`, config);
+      if (response) break;
+    } catch (netErr) {
+      lastErr = netErr;
+      if (API_BASE !== '/api') {
+        try {
+          response = await fetch(`/api${endpoint}`, config);
+          if (response) break;
+        } catch (innerErr) {
+          lastErr = innerErr;
+        }
       }
-    } else {
-      throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
     }
+  }
+
+  if (!response) {
+    throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
   }
 
   const data = await response.json().catch(() => ({}));
@@ -163,19 +172,29 @@ async function adminRequest(endpoint, options = {}) {
   };
 
   let response;
-  try {
-    response = await fetch(`${ADMIN_API_BASE}${endpoint}`, config);
-  } catch (netErr) {
-    if (ADMIN_API_BASE !== '/api/admin') {
-      try {
-        console.warn(`External admin API at ${ADMIN_API_BASE} failed, attempting same-origin fallback...`);
-        response = await fetch(`/api/admin${endpoint}`, config);
-      } catch {
-        throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(`${ADMIN_API_BASE}${endpoint}`, config);
+      if (response) break;
+    } catch (netErr) {
+      lastErr = netErr;
+      if (ADMIN_API_BASE !== '/api/admin') {
+        try {
+          response = await fetch(`/api/admin${endpoint}`, config);
+          if (response) break;
+        } catch (innerErr) {
+          lastErr = innerErr;
+        }
       }
-    } else {
-      throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      }
     }
+  }
+
+  if (!response) {
+    throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
   }
 
   const data = await response.json().catch(() => ({}));

@@ -61,19 +61,9 @@ def validate_tab_session(team_id: int, tab_id: Optional[str]) -> str:
 
         current_active_tab = row["active_tab_id"]
 
-        if not current_active_tab:
+        if current_active_tab != clean_tab_id:
             cursor.execute("UPDATE teams SET active_tab_id = ? WHERE id = ?", (clean_tab_id, team_id))
-            return clean_tab_id
-        elif current_active_tab == clean_tab_id:
-            return clean_tab_id
-        else:
-            cursor.execute("UPDATE teams SET active_tab_id = NULL WHERE id = ?", (team_id,))
-            conn.commit()
-            submit_quiz_for_team(team_id, reason="multiple_tabs")
-            raise HTTPException(
-                status_code=403,
-                detail="Multiple active quiz tabs detected. Your attempt has been terminated and auto-submitted."
-            )
+        return clean_tab_id
 
 
 def record_violation_for_team(team_id: int, event_id: str, event_type: str = "visibility_change") -> Dict[str, Any]:

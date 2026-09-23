@@ -54,13 +54,26 @@ def _resolve_db_path() -> str:
 
 DB_PATH = _resolve_db_path()
 
-def get_connection() -> sqlite3.Connection:
-    """Create and configure a SQLite connection with WAL mode and foreign keys enabled."""
-    conn = sqlite3.connect(DB_PATH, timeout=10.0)
+def get_connection():
+    """Create and configure database connection (Turso libSQL or SQLite with WAL mode)."""
+    turso_url = os.environ.get("TURSO_DATABASE_URL")
+    if turso_url:
+        try:
+            import libsql_experimental as libsql
+            conn = libsql.connect(turso_url, auth_token=os.environ.get("TURSO_AUTH_TOKEN", ""))
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e:
+            print(f"[CTF Database] Warning: Turso connection failed, falling back to SQLite: {e}")
+
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA journal_mode = WAL;")
-    conn.execute("PRAGMA busy_timeout = 5000;")
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+    except Exception:
+        pass
+    conn.execute("PRAGMA busy_timeout = 30000;")
     return conn
 
 @contextmanager
