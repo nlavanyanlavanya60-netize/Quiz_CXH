@@ -204,6 +204,12 @@ def init_db() -> None:
             created_at TEXT NOT NULL
         );
         """)
+        cursor.execute("SELECT COUNT(*) FROM admins WHERE username = 'ctf_admin';")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+            INSERT INTO admins (username, password_hash, created_at)
+            VALUES ('ctf_admin', '$argon2id$v=19$m=65536,t=2,p=2$GA8T7vk6ZI5YxAgbM4cVnw$riQiN9afgukaClZCXR44j0UonR/9CuwCClZAd/gX2Uo', datetime('now'));
+            """)
 
         # 7. Admin Sessions table
         cursor.execute("""
