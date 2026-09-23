@@ -1,8 +1,9 @@
-// In production (Vercel), VITE_API_BASE_URL points to the Render backend.
-// In local dev, the Vite proxy forwards /api → localhost:8000
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api`
-  : '/api';
+// Clean API_BASE resolution
+let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+if (rawBase.endsWith('/')) {
+  rawBase = rawBase.slice(0, -1);
+}
+const API_BASE = rawBase ? `${rawBase}/api` : '/api';
 
 export const tokenStorage = {
   get: () => sessionStorage.getItem('ctf_contestant_token'),
@@ -39,7 +40,23 @@ async function apiRequest(endpoint, options = {}) {
     credentials: 'include'
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, config);
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, config);
+  } catch (netErr) {
+    // If an external backend is unreachable, automatically fall back to relative /api
+    if (API_BASE !== '/api') {
+      try {
+        console.warn(`External backend at ${API_BASE} failed, attempting same-origin fallback...`);
+        response = await fetch(`/api${endpoint}`, config);
+      } catch {
+        throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+      }
+    } else {
+      throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+    }
+  }
+
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -116,9 +133,7 @@ export const api = {
 };
 
 // ── Admin API Services ─────────────────────────────────────────────────────
-const ADMIN_API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api/admin`
-  : '/api/admin';
+const ADMIN_API_BASE = rawBase ? `${rawBase}/api/admin` : '/api/admin';
 
 export const adminTokenStorage = {
   get: () => sessionStorage.getItem('ctf_admin_token'),
@@ -143,7 +158,22 @@ async function adminRequest(endpoint, options = {}) {
     credentials: 'include'
   };
 
-  const response = await fetch(`${ADMIN_API_BASE}${endpoint}`, config);
+  let response;
+  try {
+    response = await fetch(`${ADMIN_API_BASE}${endpoint}`, config);
+  } catch (netErr) {
+    if (ADMIN_API_BASE !== '/api/admin') {
+      try {
+        console.warn(`External admin API at ${ADMIN_API_BASE} failed, attempting same-origin fallback...`);
+        response = await fetch(`/api/admin${endpoint}`, config);
+      } catch {
+        throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+      }
+    } else {
+      throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+    }
+  }
+
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
