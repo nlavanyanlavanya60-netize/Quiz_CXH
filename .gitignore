@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.db-journal
+
+# Node
+node_modules/
+contestant-frontend/node_modules/
+admin-frontend/node_modules/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite build output
+contestant-frontend/dist/
+admin-frontend/dist/
+
+# Misc
+*.log
