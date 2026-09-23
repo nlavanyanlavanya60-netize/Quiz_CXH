@@ -3,7 +3,6 @@ import re
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from .database import init_db
 from .import_questions import import_questions_to_db
@@ -21,13 +20,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Cybersecurity CTF Quiz Platform API",
     version="1.0.0",
-    docs_url="/api/docs",
+    docs_url="/docs",
+    openapi_url="/openapi.json",
     redoc_url=None,
     lifespan=lifespan
 )
 
 # ── CORS ────────────────────────────────────────────────────────────────────
-# Static allowed origins (local + known Vercel production URLs)
 _STATIC_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -35,15 +34,14 @@ _STATIC_ORIGINS = [
     "http://127.0.0.1:5174",
     "https://quiz-cxh-cy.vercel.app",
     "https://quiz-cxh-admin.vercel.app",
+    "https://quiz-cxh.vercel.app",
 ]
 
-# Extra origins from environment variable (comma-separated), e.g. Vercel preview URLs
 _extra = os.environ.get("ALLOWED_ORIGINS_EXTRA", "")
 _EXTRA_ORIGINS = [o.strip() for o in _extra.split(",") if o.strip()]
 
 ALLOWED_ORIGINS = _STATIC_ORIGINS + _EXTRA_ORIGINS
 
-# Custom CORS middleware that also allows *.vercel.app preview deployments
 class FlexibleCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin", "")
@@ -53,12 +51,14 @@ class FlexibleCORSMiddleware(BaseHTTPMiddleware):
             or re.match(r"^https://quiz-cxh[a-z0-9\-]*\.vercel\.app$", origin)
         )
 
+        req_headers = request.headers.get("access-control-request-headers", "Authorization, Content-Type, X-Tab-ID")
+
         if request.method == "OPTIONS" and is_allowed:
             response = Response()
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Tab-ID"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = req_headers
             response.headers["Access-Control-Max-Age"] = "86400"
             return response
 
@@ -67,8 +67,8 @@ class FlexibleCORSMiddleware(BaseHTTPMiddleware):
         if is_allowed:
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Tab-ID"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = req_headers
 
         return response
 
@@ -100,11 +100,28 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error"}
     )
 
-# Register API Routers
-app.include_router(contestant_router)
-app.include_router(admin_router)
+# ── Register API Routers under both /api and root ───────────────────────────
+# This ensures full compatibility whether Vercel strips /api or keeps it intact
+app.include_router(contestant_router, prefix="/api")
+app.include_router(contestant_router, prefix="")
 
+app.include_router(admin_router, prefix="/api/admin")
+app.include_router(admin_router, prefix="/admin")
+
+@app.get("/")
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     """System health check endpoint."""
-    return {"status": "ok", "platform": "Cybersecurity CTF Quiz Platform", "version": "1.0.0"}
+    return {"status": "ok", "platform": "Cybersecurity CTF Quiz Platform API", "version": "1.0.0"}
+
+@app.get("/debug")
+@app.get("/api/debug")
+def debug_info(request: Request):
+    """Debug endpoint to inspect incoming path and scope."""
+    return {
+        "url": str(request.url),
+        "path": request.url.path,
+        "root_path": request.scope.get("root_path", ""),
+        "scope_path": request.scope.get("path", "")
+    }

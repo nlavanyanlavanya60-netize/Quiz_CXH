@@ -21,7 +21,7 @@ from ..schemas import (
     AdminAuthorizeRequest
 )
 
-router = APIRouter(prefix="/api/admin", tags=["Administrator"])
+router = APIRouter(tags=["Administrator"])
 
 @router.post("/login", response_model=AdminLoginResponse)
 def admin_login(req: AdminLoginRequest, request: Request, response: Response):

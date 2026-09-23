@@ -4,9 +4,12 @@ import sqlite3
 from typing import List, Dict, Any
 from .database import get_db
 
-_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-_LOCAL_QUESTIONS_PATH = os.path.join(_PROJECT_ROOT, "questions", "CTF_Challenge_50_Questions.txt")
-QUESTIONS_FILE_PATH = _LOCAL_QUESTIONS_PATH if os.path.exists(_LOCAL_QUESTIONS_PATH) else os.path.abspath(r"C:\CTF\questions\CTF_Challenge_50_Questions.txt")
+_CANDIDATE_PATHS = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "questions", "CTF_Challenge_50_Questions.txt"),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "questions", "CTF_Challenge_50_Questions.txt")),
+    os.path.abspath(r"C:\CTF\questions\CTF_Challenge_50_Questions.txt"),
+]
+QUESTIONS_FILE_PATH = next((p for p in _CANDIDATE_PATHS if os.path.exists(p)), _CANDIDATE_PATHS[0])
 
 def parse_questions_file(file_path: str = QUESTIONS_FILE_PATH) -> List[Dict[str, Any]]:
     """

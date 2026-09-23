@@ -32,7 +32,7 @@ from ..schemas import (
     QuizViolationResponse
 )
 
-router = APIRouter(prefix="/api", tags=["Contestant"])
+router = APIRouter(tags=["Contestant"])
 
 @router.post("/register", response_model=RegisterResponse)
 def register_team(req: RegisterRequest, request: Request):

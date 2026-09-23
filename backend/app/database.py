@@ -11,8 +11,13 @@ def _resolve_db_path() -> str:
     - Render/Railway: use DATABASE_PATH env var
     - Local dev: use backend/ctf_quiz.db
     """
-    # On Vercel, only /tmp is writable
-    if os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"):
+    # On Vercel / AWS Lambda / Serverless, only /tmp is writable
+    is_serverless = any(
+        os.environ.get(k) for k in [
+            "VERCEL", "VERCEL_ENV", "AWS_LAMBDA_FUNCTION_NAME", "LAMBDA_TASK_ROOT"
+        ]
+    )
+    if is_serverless:
         tmp_path = "/tmp/ctf_quiz.db"
         if not os.path.exists(tmp_path):
             # Seed from committed DB (has 50 questions + admin pre-loaded)
