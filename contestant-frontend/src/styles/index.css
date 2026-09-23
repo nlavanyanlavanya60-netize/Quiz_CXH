@@ -270,6 +270,154 @@ a:focus-visible {
   padding: 1rem;
 }
 
+/* Admin Specific Controls */
+.btn-admin-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #00D2FF 0%, #0077B6 100%);
+  color: #041017;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.35);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-admin-primary:hover {
+  background: linear-gradient(135deg, #33DCFF 0%, #0088CC 100%);
+  box-shadow: 0 0 24px rgba(0, 210, 255, 0.55);
+  transform: translateY(-1px);
+}
+
+.btn-admin-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-admin-secondary:hover {
+  background: rgba(22, 32, 50, 0.85);
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.btn-admin-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 42, 109, 0.12);
+  color: var(--accent-magenta);
+  border: 1px solid rgba(255, 42, 109, 0.35);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-admin-danger:hover {
+  background: rgba(255, 42, 109, 0.25);
+  border-color: var(--accent-magenta);
+  box-shadow: 0 0 10px rgba(255, 42, 109, 0.3);
+}
+
+.btn-admin-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(0, 242, 166, 0.12);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(0, 242, 166, 0.35);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-admin-success:hover {
+  background: rgba(0, 242, 166, 0.25);
+  border-color: var(--accent-emerald);
+  box-shadow: 0 0 10px rgba(0, 242, 166, 0.3);
+}
+
+.admin-input {
+  width: 100%;
+  background: rgba(8, 12, 20, 0.85);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.25);
+}
+
+.admin-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.admin-table th {
+  background: rgba(14, 20, 32, 0.95);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background: rgba(20, 30, 48, 0.4);
+}
+
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
