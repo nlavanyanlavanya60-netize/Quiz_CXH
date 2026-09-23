@@ -1,8 +1,13 @@
-// In production (Vercel), VITE_API_BASE_URL points to the Render backend.
-// In local dev, the Vite proxy forwards /api → localhost:8000
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api/admin`
-  : '/api/admin';
+// In production (Vercel), points to the Vercel backend.
+const defaultBackend = 'https://quiz-cxh-backend.vercel.app';
+let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+if (!rawBase && !import.meta.env.DEV) {
+  rawBase = defaultBackend;
+}
+if (rawBase.endsWith('/')) {
+  rawBase = rawBase.slice(0, -1);
+}
+const API_BASE = rawBase ? `${rawBase}/api/admin` : '/api/admin';
 
 export const adminTokenStorage = {
   get: () => sessionStorage.getItem('ctf_admin_token'),

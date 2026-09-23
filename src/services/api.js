@@ -1,5 +1,9 @@
 // Clean API_BASE resolution
+const defaultBackend = 'https://quiz-cxh-backend.vercel.app';
 let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+if (!rawBase && !import.meta.env.DEV) {
+  rawBase = defaultBackend;
+}
 if (rawBase.endsWith('/')) {
   rawBase = rawBase.slice(0, -1);
 }
