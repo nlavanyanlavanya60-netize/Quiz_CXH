@@ -26,57 +26,20 @@ app = FastAPI(
     docs_url="/docs",
     openapi_url="/openapi.json",
     redoc_url=None,
+    redirect_slashes=False,
     lifespan=lifespan
 )
 
 # ── CORS ────────────────────────────────────────────────────────────────────
-_STATIC_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "https://quiz-cxh-cy.vercel.app",
-    "https://quiz-cxh-admin.vercel.app",
-    "https://quiz-cxh.vercel.app",
-]
+from fastapi.middleware.cors import CORSMiddleware
 
-_extra = os.environ.get("ALLOWED_ORIGINS_EXTRA", "")
-_EXTRA_ORIGINS = [o.strip() for o in _extra.split(",") if o.strip()]
-
-ALLOWED_ORIGINS = _STATIC_ORIGINS + _EXTRA_ORIGINS
-
-class FlexibleCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin", "")
-        is_allowed = (
-            origin in ALLOWED_ORIGINS
-            or origin.endswith(".vercel.app")
-            or re.match(r"^https://[a-zA-Z0-9\-_.]+\.vercel\.app$", origin)
-            or not origin
-        )
-
-        req_headers = request.headers.get("access-control-request-headers", "Authorization, Content-Type, X-Tab-ID")
-
-        if request.method == "OPTIONS" and is_allowed:
-            response = Response()
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = req_headers
-            response.headers["Access-Control-Max-Age"] = "86400"
-            return response
-
-        response = await call_next(request)
-
-        if is_allowed:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = req_headers
-
-        return response
-
-app.add_middleware(FlexibleCORSMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"^https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):

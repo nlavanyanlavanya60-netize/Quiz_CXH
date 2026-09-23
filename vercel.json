@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "{backend/**,questions/**,requirements.txt}"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
