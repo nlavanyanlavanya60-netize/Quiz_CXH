@@ -165,3 +165,42 @@ cd C:\CTF
   .\.venv\Scripts\python.exe -m backend.reset_database
   ```
   *(Requires typing `RESET_DATABASE` to prevent accidental data loss)*.
+
+---
+
+## Production Deployment
+
+The production architecture uses Railway for the FastAPI backend and Vercel for the React frontends.
+
+### 1. Deploy the backend to Railway
+
+Create a Railway project from this repository. Railway will use `railway.json` and start the service with `python backend/main.py`.
+
+Set these Railway variables:
+
+```text
+SESSION_SECRET=<long-random-secret>
+DATABASE_PATH=/data/ctf_quiz.db
+ALLOWED_ORIGINS_EXTRA=https://<contestant-vercel-domain>,https://<admin-vercel-domain>
+```
+
+Add a Railway volume mounted at `/data` so registrations, answers, and admin accounts survive redeploys. Create the first admin account from a Railway shell with `python -m backend.create_admin`.
+
+The backend URL is the Railway public domain, for example `https://ctf-api-production.up.railway.app`.
+
+### 2. Deploy the contestant frontend to Vercel
+
+Create a Vercel project with the repository root as its Root Directory. Vercel uses the root `vercel.json` and builds the contestant portal.
+
+Set this Vercel variable for Preview and Production:
+
+```text
+VITE_API_BASE_URL=https://<railway-public-domain>
+```
+
+### 3. Deploy the admin frontend to Vercel
+
+Create a second Vercel project from the same repository with `admin-frontend` as its Root Directory. Set the same `VITE_API_BASE_URL` variable there.
+
+Do not add a trailing slash to `VITE_API_BASE_URL`; the frontend appends `/api` and `/api/admin` itself.
+# quiz-cxh_cyber
