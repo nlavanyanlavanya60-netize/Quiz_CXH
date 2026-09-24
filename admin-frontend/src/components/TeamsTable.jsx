@@ -75,9 +75,9 @@ export default function TeamsTable({
                 <th style={{ width: '60px' }}>ID</th>
                 <th>Team Name</th>
                 <th>Members</th>
-                <th>Registered At</th>
-                <th>Session State</th>
+                <th>Score</th>
                 <th>Quiz Progress</th>
+                <th>Session State</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -86,6 +86,7 @@ export default function TeamsTable({
                 const hasActive = t.has_active_session === 1;
                 const isSubmitted = Boolean(t.quiz_submitted_at);
                 const isStarted = Boolean(t.quiz_started_at) && !isSubmitted;
+                const scoreValue = t.score != null ? t.score : (t.live_score != null ? t.live_score : 0);
 
                 return (
                   <tr key={t.id}>
@@ -99,8 +100,64 @@ export default function TeamsTable({
                       <div>{t.member1_name}</div>
                       {t.member2_name && <div style={{ color: 'var(--text-muted)' }}>{t.member2_name}</div>}
                     </td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                      {new Date(t.registered_at).toLocaleString()}
+                    <td>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          color: isSubmitted ? 'var(--accent-emerald)' : 'var(--accent-cyan)',
+                        }}
+                      >
+                        {scoreValue} PTS
+                      </span>
+                      {!isSubmitted && isStarted && (
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>
+                          LIVE
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        {isSubmitted ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              color: 'var(--accent-emerald)',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <CheckCircle size={14} /> SUBMITTED ({t.submission_reason || 'manual'})
+                          </span>
+                        ) : isStarted ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              color: 'var(--accent-warning)',
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <Clock size={14} /> IN PROGRESS ({t.answered_count || 0}/50)
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                            NOT STARTED
+                          </span>
+                        )}
+                        {t.violation_count > 0 && (
+                          <span style={{ color: 'var(--accent-danger)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                            ⚠️ {t.violation_count} Violation{t.violation_count > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       {hasActive ? (
@@ -120,7 +177,7 @@ export default function TeamsTable({
                           }}
                         >
                           <Radio size={12} className="animate-pulse" />
-                          LOGGED IN
+                          ONLINE
                         </span>
                       ) : (
                         <span
@@ -131,41 +188,6 @@ export default function TeamsTable({
                           }}
                         >
                           OFFLINE
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {isSubmitted ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.3rem',
-                            color: 'var(--accent-emerald)',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <CheckCircle size={14} /> SUBMITTED ({t.submission_reason || 'manual'})
-                        </span>
-                      ) : isStarted ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.3rem',
-                            color: 'var(--accent-warning)',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <Clock size={14} /> IN PROGRESS
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
-                          NOT STARTED
                         </span>
                       )}
                     </td>

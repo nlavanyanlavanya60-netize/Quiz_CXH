@@ -242,14 +242,25 @@ export default function QuizPage({ session, onQuizSubmitted, onNavigate }) {
         <div className="glass-panel" style={{ padding: '3rem', border: '1px solid var(--accent-danger)' }}>
           <AlertTriangle size={36} color="var(--accent-danger)" style={{ margin: '0 auto 1rem auto' }} />
           <h3 style={{ fontFamily: 'var(--font-mono)', color: '#FF6B81', marginBottom: '0.5rem' }}>
-            ERROR
+            CONNECTION ERROR
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
             {error}
           </p>
-          <button onClick={() => onNavigate('/')} className="btn-cyber-primary">
-            RETURN TO HOME
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                setError('');
+                loadQuizState();
+              }}
+              className="btn-cyber-primary"
+            >
+              RETRY CONNECTION
+            </button>
+            <button onClick={() => onNavigate('/')} className="btn-cyber-secondary">
+              RETURN TO HOME
+            </button>
+          </div>
         </div>
       </div>
     );

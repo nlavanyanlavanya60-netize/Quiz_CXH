@@ -47,18 +47,15 @@ export default function AdminDashboard({ onLogout }) {
         adminApi.getResults()
       ]);
 
-      setStats(sData);
-      setRankings(rData || []);
-      setTeams(tData || []);
-      setResults(resData || []);
+      if (sData) setStats(sData);
+      if (Array.isArray(rData)) setRankings(rData);
+      if (Array.isArray(tData)) setTeams(tData);
+      if (Array.isArray(resData)) setResults(resData);
     } catch (err) {
-      console.error('Error fetching admin telemetry:', err);
-      if (err.status === 401) {
-        try {
-          await adminApi.getSession();
-        } catch {
-          onLogout();
-        }
+      console.warn('Admin telemetry background refresh note:', err?.message || err);
+      // Only logout if manually requested or if session check explicitly fails on manual refresh
+      if (isManual && err?.status === 401) {
+        onLogout();
       }
     } finally {
       setLoading(false);

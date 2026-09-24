@@ -1,13 +1,4 @@
-// In production (Vercel), points to the Vercel backend.
-const defaultBackend = 'https://quiz-cxh-backend.vercel.app';
-let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
-if (!rawBase && !import.meta.env.DEV) {
-  rawBase = defaultBackend;
-}
-if (rawBase.endsWith('/')) {
-  rawBase = rawBase.slice(0, -1);
-}
-const API_BASE = rawBase ? `${rawBase}/api/admin` : '/api/admin';
+const ADMIN_BASES = ['/api/admin', 'https://quiz-cxh-backend.vercel.app/api/admin'];
 
 export const adminTokenStorage = {
   get: () => sessionStorage.getItem('ctf_admin_token'),
@@ -32,7 +23,24 @@ async function adminRequest(endpoint, options = {}) {
     credentials: 'include'
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, config);
+  let response;
+  let lastErr;
+  for (const base of ADMIN_BASES) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(`${base}${endpoint}`, config);
+        if (response) break;
+      } catch (err) {
+        lastErr = err;
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
+    if (response) break;
+  }
+
+  if (!response) {
+    throw new Error('Connection failed: Server is unreachable. Please verify network connectivity.');
+  }
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
